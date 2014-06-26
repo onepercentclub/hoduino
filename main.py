@@ -1,6 +1,8 @@
 #!/usr/bin/env python
-
+import time
 from DDPClient import DDPClient
+from pyfirmata import Arduino, util
+
 
 SERVER_URL = 'ws://127.0.0.1:3000/websocket'
 DEBUG = True
@@ -36,6 +38,12 @@ class Hoduino():
         print '* ADDED {} {}'.format(collection, id)
         for key, value in fields.items():
             print '  - FIELD {} {}'.format(key, value)
+        board = Arduino('/dev/tty.usbmodem1421')
+        y = board.get_pin('d:11:o')
+        y.write(1)
+        time.sleep(2)
+        y.write(0)
+        board.exit()
 
 def main():
     # Connect to server

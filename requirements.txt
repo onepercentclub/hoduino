@@ -1,2 +1,2 @@
-arduino-python
+pyFirmata==0.9.5
 python-ddp==0.1.0
