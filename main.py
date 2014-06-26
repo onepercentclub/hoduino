@@ -3,23 +3,38 @@ import time
 from DDPClient import DDPClient
 from pyfirmata import Arduino, util
 
-
 SERVER_URL = 'ws://127.0.0.1:3000/websocket'
-DEBUG = True
+ARDUINO_PORT = '/dev/tty.usbmodem1431'
+DEBUG = False
 
 
 class Hoduino():
-    def __init__(self, server_url, debug=False):
+    def __init__(self, server_url, debug=False):        
+        # Connect to the Arduino board
+        self.board = Arduino(ARDUINO_PORT)
+
+        # Arduino pin for LED
+        self.led_pin = self.board.get_pin('d:11:o')
+
+        # Setup connection to the DDP server
         self.client = DDPClient(server_url)
         self.client.debug = debug
 
-        # Some events to handle
+        # Some events to handle from DDP
         self.client.on('added', self.added)
         self.client.on('connected', self.connected)
         self.client.on('socket_closed', self.closed)
         self.client.on('failed', self.failed)
 
+        # Connect to DDP server
         self.client.connect()
+
+    def exit(self):
+        # Close connect to Arduino
+        self.board.exit()
+
+        # Close connection to 
+        self.client.close()
 
     def connected(self):
         print '* CONNECTED'
@@ -38,16 +53,24 @@ class Hoduino():
         print '* ADDED {} {}'.format(collection, id)
         for key, value in fields.items():
             print '  - FIELD {} {}'.format(key, value)
-        board = Arduino('/dev/tty.usbmodem1421')
-        y = board.get_pin('d:11:o')
-        y.write(1)
+
+        # Light the LED when a message is added
+        self._flash_led()
+
+    def _flash_led(self):
+        self.led_pin.write(1)
         time.sleep(2)
-        y.write(0)
-        board.exit()
+        self.led_pin.write(0)
 
 def main():
     # Connect to server
-    Hoduino(SERVER_URL, DEBUG)
+    hoduino = Hoduino(SERVER_URL, DEBUG)
+
+    print "Press Enter to quit ..." 
+    raw_input()
+
+    print "Exiting hoduino ..." 
+    hoduino.exit()
 
 if __name__ == "__main__":
     try:
@@ -57,6 +80,3 @@ if __name__ == "__main__":
         print sys.exc_info()[0]
         import traceback
         print traceback.format_exc()
-    finally:
-        print "Press Enter to quit ..." 
-        raw_input()
