@@ -11,7 +11,10 @@ DEBUG = False
 class Hoduino():
     def __init__(self, server_url, debug=False):        
         # Connect to the Arduino board
-        self.board = Arduino(ARDUINO_PORT)
+        try:
+            self.board = Arduino(ARDUINO_PORT)
+        except OSError as e:
+            raise Exception("Arduino not found on: {0}".format(ARDUINO_PORT))
 
         # Arduino pin for LED
         self.led_pin = self.board.get_pin('d:11:o')
