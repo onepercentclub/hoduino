@@ -68,7 +68,6 @@ class Daemon:
                 """
                 Start the daemon
                 """
-                print "Here 2!"
                 # Check for a pidfile to see if the daemon already runs
                 try:
                         pf = file(self.pidfile,'r')
@@ -82,11 +81,8 @@ class Daemon:
                         sys.stderr.write(message % self.pidfile)
                         sys.exit(1)
                
-                print "Here 3!"
-
                 # Start the daemon
                 self.daemonize()
-                print "Here 4!"
                 self.run()
  
         def stop(self):
