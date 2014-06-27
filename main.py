@@ -79,7 +79,7 @@ class Hoduino():
         if not self.shutting_down:
             while not self.ddp_connected:
                 self.ddp_connect()
-                sleep(5)
+                time.sleep(5)
 
     def failed(self, data):
         print '++ DDP failed - data: {}'.format(str(data))
