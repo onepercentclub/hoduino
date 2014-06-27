@@ -6,7 +6,6 @@ from pyfirmata import Arduino, util
 from pyfirmata import SERVO as SERVO_MODE
 from utils import Singleton
 
-ARDUINO_PORT = '/dev/tty.usbmodem1421'
 UPPER_BOUND_DEGREES = 179
 LOWER_BOUND_DEGREES = 0
 SLEEP_TIME = 0.5
@@ -56,7 +55,7 @@ class HoduinoBoardInterface():
     """
     __metaclass__ = Singleton
 
-    def __init__(self, port=ARDUINO_PORT):
+    def __init__(self, port):
 
         try:
             self.board = Arduino(port)
@@ -75,7 +74,7 @@ class HoduinoBoardInterface():
         self.motor_pin.write(degrees)
         time.sleep(SLEEP_TIME)
 
-    def donationReaction(self):
+    def donation_reaction(self):
         # spin procedure for donation reaction
         self._spin(90)
         self._spin(150)

@@ -1,10 +1,11 @@
 #!/usr/bin/env python
 import time, sys
 from DDPClient import DDPClient
-from hoduinoCommandInterface import HoduinoBoardInterface
+from board_interface import HoduinoBoardInterface
 from daemon import Daemon
 
-SERVER_URL = 'ws://127.0.0.1:3000/websocket'
+SERVER_URL = 'wss://stream.onepercentclub.com/websocket'
+ARDUINO_PORT = '/dev/tty.usbmodem1431'
 DEBUG = False
 SERVO_MODE = 4
 
@@ -29,40 +30,56 @@ class Hoduino():
         A listener for the arduino
     """
 
-    def __init__(self, server_url, debug=False):
+    def __init__(self, ddp_server_url, debug=False):
+        self.shutting_down = False
+        self.server_url = ddp_server_url
+        self.debug = debug
 
-        self.board_interface = HoduinoBoardInterface()
+        self.board_interface = HoduinoBoardInterface(port=ARDUINO_PORT)
 
         # Setup connection to the DDP server
-        self.client = DDPClient(server_url)
-        self.client.debug = debug
+        self.ddp_connect()
+
+    def ddp_connect(self):
+        print '++ DDP connection attempt...'
+        self.ddp_client = DDPClient(self.server_url)
+        self.ddp_client.debug = self.debug
 
         # Some events to handle from DDP
-        self.client.on('added', self.added)
-        self.client.on('connected', self.connected)
-        self.client.on('socket_closed', self.closed)
-        self.client.on('failed', self.failed)
+        self.ddp_client.on('added', self.added)
+        self.ddp_client.on('connected', self.connected)
+        self.ddp_client.on('socket_closed', self.closed)
+        self.ddp_client.on('failed', self.failed)
 
         # Connect to DDP server
-        self.client.connect()
+        self.ddp_client.connect()
 
     def exit(self):
+        self.shutting_down = True
+
         # Close connect to Arduino
-		if self.board_interface:
-        	self.board_interface.close_arduino()
+        if self.board_interface:
+            self.board_interface.close_arduino()
 
         # Close connection to 
-        self.client.close()
+        self.ddp_client.close()
 
     def connected(self):
         print '++ DDP Connected'
+        self.ddp_connected = True
 
         # Subscribe to messages stream. Limit messages to 1 as we 
         # only want the latest message.
-        sub_id = self.client.subscribe('messages', [{'limit': 1}])
+        sub_id = self.ddp_client.subscribe('messages', [{'limit': 1}])
 
     def closed(self, code, reason):
         print '++ DDP connection closed {} {}'.format(code, reason)
+        self.ddp_connected = False
+
+        if not self.shutting_down:
+            while not self.ddp_connected:
+                self.ddp_connect()
+                sleep(5)
 
     def failed(self, data):
         print '++ DDP failed - data: {}'.format(str(data))
@@ -70,7 +87,7 @@ class Hoduino():
     def added(self, collection, id, fields):
         print '++ DDP added {} {}'.format(collection, id)
 
-        self.arduinoBoardInterface.donationReaction()
+        self.board_interface.donation_reaction()
 
 
 
