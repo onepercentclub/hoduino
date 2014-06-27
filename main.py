@@ -1,12 +1,28 @@
 #!/usr/bin/env python
-import time
+import time, sys
 from DDPClient import DDPClient
 from pyfirmata import Arduino, util
+from daemon import Daemon
 
 SERVER_URL = 'ws://127.0.0.1:3000/websocket'
 ARDUINO_PORT = '/dev/tty.usbmodem1431'
-DEBUG = False
+DEBUG = True
 
+class HoduinoDaemon(Daemon):
+    def run(self):
+        # Connect to server
+        print "Starting Hoduino!"
+        self.hoduino = Hoduino(SERVER_URL, DEBUG)
+
+        while True:
+            time.sleep(1)
+
+    def exit(self):
+        print "Exiting Hoduino ..." 
+        try:
+            self.hoduino.exit()
+        except AttributeError:
+            print "Why no Hoduino? :-("
 
 class Hoduino():
     def __init__(self, server_url, debug=False):        
@@ -17,7 +33,11 @@ class Hoduino():
             raise Exception("Arduino not found on: {0}".format(ARDUINO_PORT))
 
         # Arduino pin for LED
-        self.led_pin = self.board.get_pin('d:11:o')
+        try:
+            self.led_pin = self.board.get_pin('d:11:o')
+        except AttributeError as e:
+            # No Arduino :-(
+            pass 
 
         # Setup connection to the DDP server
         self.client = DDPClient(server_url)
@@ -34,52 +54,54 @@ class Hoduino():
 
     def exit(self):
         # Close connect to Arduino
-        self.board.exit()
+        if self.board:
+            self.board.exit()
 
         # Close connection to 
         self.client.close()
 
     def connected(self):
-        print '* CONNECTED'
+        print '++ DDP Connected'
 
         # Subscribe to messages stream. Limit messages to 1 as we 
         # only want the latest message.
         sub_id = self.client.subscribe('messages', [{'limit': 1}])
 
     def closed(self, code, reason):
-        print '* CONNECTION CLOSED {} {}'.format(code, reason)
+        print '++ DDP connection closed {} {}'.format(code, reason)
 
     def failed(self, data):
-        print '* FAILED - data: {}'.format(str(data))
+        print '++ DDP failed - data: {}'.format(str(data))
 
     def added(self, collection, id, fields):
-        print '* ADDED {} {}'.format(collection, id)
-        for key, value in fields.items():
-            print '  - FIELD {} {}'.format(key, value)
+        print '++ DDP added {} {}'.format(collection, id)
 
         # Light the LED when a message is added
         self._flash_led()
 
     def _flash_led(self):
-        self.led_pin.write(1)
-        time.sleep(2)
-        self.led_pin.write(0)
+        try:
+            self.led_pin.write(1)
+            time.sleep(2)
+            self.led_pin.write(0)
+        except AttributeError:
+            print "** Pin not accessible"
 
-def main():
-    # Connect to server
-    hoduino = Hoduino(SERVER_URL, DEBUG)
-
-    print "Press Enter to quit ..." 
-    raw_input()
-
-    print "Exiting hoduino ..." 
-    hoduino.exit()
 
 if __name__ == "__main__":
-    try:
-        main()
-    except:
-        import sys
-        print sys.exc_info()[0]
-        import traceback
-        print traceback.format_exc()
+    daemon = HoduinoDaemon('/tmp/daemon-hoduino.pid')
+
+    if len(sys.argv) == 2:
+        if 'start' == sys.argv[1]:
+            daemon.start()
+        elif 'stop' == sys.argv[1]:
+            daemon.stop()
+        elif 'restart' == sys.argv[1]:
+            daemon.restart()
+        else:
+            print "Unknown command"
+            sys.exit(2)
+        sys.exit(0)
+    else:
+        print "usage: %s start|stop|restart" % sys.argv[0]
+        sys.exit(2)
