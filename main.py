@@ -1,23 +1,20 @@
 #!/usr/bin/env python
 import time
 from DDPClient import DDPClient
-from pyfirmata import Arduino, util
+from hoduinoCommandInterface import HoduinoBoardInterface
 
 SERVER_URL = 'ws://127.0.0.1:3000/websocket'
-ARDUINO_PORT = '/dev/tty.usbmodem1431'
 DEBUG = False
-
+SERVO_MODE = 4
 
 class Hoduino():
-    def __init__(self, server_url, debug=False):        
-        # Connect to the Arduino board
-        try:
-            self.board = Arduino(ARDUINO_PORT)
-        except OSError as e:
-            raise Exception("Arduino not found on: {0}".format(ARDUINO_PORT))
+    """
+        A listener for the arduino
+    """
 
-        # Arduino pin for LED
-        self.led_pin = self.board.get_pin('d:11:o')
+    def __init__(self, server_url, debug=False):
+
+        self.arduinoBoardInterface = HoduinoBoardInterface()
 
         # Setup connection to the DDP server
         self.client = DDPClient(server_url)
@@ -34,7 +31,7 @@ class Hoduino():
 
     def exit(self):
         # Close connect to Arduino
-        self.board.exit()
+        self.arduinoBoardInterface.close_arduino()
 
         # Close connection to 
         self.client.close()
@@ -57,13 +54,8 @@ class Hoduino():
         for key, value in fields.items():
             print '  - FIELD {} {}'.format(key, value)
 
-        # Light the LED when a message is added
-        self._flash_led()
+        self.arduinoBoardInterface.donationReaction()
 
-    def _flash_led(self):
-        self.led_pin.write(1)
-        time.sleep(2)
-        self.led_pin.write(0)
 
 def main():
     # Connect to server
