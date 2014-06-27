@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 import time, sys
 from DDPClient import DDPClient
-from pyfirmata import Arduino, util
+from hoduinoCommandInterface import HoduinoBoardInterface
 from daemon import Daemon
 
 SERVER_URL = 'ws://127.0.0.1:3000/websocket'
-ARDUINO_PORT = '/dev/tty.usbmodem1431'
-DEBUG = True
+DEBUG = False
+SERVO_MODE = 4
 
 class HoduinoDaemon(Daemon):
     def run(self):
@@ -25,19 +25,13 @@ class HoduinoDaemon(Daemon):
             print "Why no Hoduino? :-("
 
 class Hoduino():
-    def __init__(self, server_url, debug=False):        
-        # Connect to the Arduino board
-        try:
-            self.board = Arduino(ARDUINO_PORT)
-        except OSError as e:
-            raise Exception("Arduino not found on: {0}".format(ARDUINO_PORT))
+    """
+        A listener for the arduino
+    """
 
-        # Arduino pin for LED
-        try:
-            self.led_pin = self.board.get_pin('d:11:o')
-        except AttributeError as e:
-            # No Arduino :-(
-            pass 
+    def __init__(self, server_url, debug=False):
+
+        self.board_interface = HoduinoBoardInterface()
 
         # Setup connection to the DDP server
         self.client = DDPClient(server_url)
@@ -54,8 +48,8 @@ class Hoduino():
 
     def exit(self):
         # Close connect to Arduino
-        if self.board:
-            self.board.exit()
+		if self.board_interface:
+        	self.board_interface.close_arduino()
 
         # Close connection to 
         self.client.close()
@@ -76,16 +70,8 @@ class Hoduino():
     def added(self, collection, id, fields):
         print '++ DDP added {} {}'.format(collection, id)
 
-        # Light the LED when a message is added
-        self._flash_led()
+        self.arduinoBoardInterface.donationReaction()
 
-    def _flash_led(self):
-        try:
-            self.led_pin.write(1)
-            time.sleep(2)
-            self.led_pin.write(0)
-        except AttributeError:
-            print "** Pin not accessible"
 
 
 if __name__ == "__main__":
