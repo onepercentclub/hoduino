@@ -1,2 +1,3 @@
 pyFirmata==0.9.5
+python-meteor==0.1.3
 python-ddp==0.1.0

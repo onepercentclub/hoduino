@@ -5,7 +5,7 @@ from board_interface import HoduinoBoardInterface
 from daemon import Daemon
 
 SERVER_URL = 'wss://stream.onepercentclub.com/websocket'
-ARDUINO_PORT = '/dev/tty.usbmodem1431'
+ARDUINO_PORT = '/dev/ttyACM0'
 DEBUG = False
 SERVO_MODE = 4
 
@@ -16,7 +16,10 @@ class HoduinoDaemon(Daemon):
         self.hoduino = Hoduino(SERVER_URL, DEBUG)
 
         while True:
-            time.sleep(1)
+            try:
+                 time.sleep(10)
+            except KeyboardInterrupt as i:
+                 pass
 
     def exit(self):
         print "Exiting Hoduino ..." 
@@ -29,6 +32,7 @@ class Hoduino():
     """
         A listener for the arduino
     """
+    latest_hash = None
 
     def __init__(self, ddp_server_url, debug=False):
         self.shutting_down = False
@@ -73,7 +77,7 @@ class Hoduino():
         sub_id = self.ddp_client.subscribe('messages', [{'limit': 1}])
 
     def closed(self, code, reason):
-        print '++ DDP connection closed {} {}'.format(code, reason)
+        print '++ DDP connection closed {0} {1}'.format(code, reason)
         self.ddp_connected = False
 
         if not self.shutting_down:
@@ -82,12 +86,16 @@ class Hoduino():
                 time.sleep(30)
 
     def failed(self, data):
-        print '++ DDP failed - data: {}'.format(str(data))
+        print '++ DDP failed - data: {0}'.format(str(data))
 
     def added(self, collection, id, fields):
-        print '++ DDP added {} {}'.format(collection, id)
-
-        self.board_interface.donation_reaction()
+        print '++ DDP added {0} {1}'.format(len(collection), id)
+        if id <> self.latest_hash:
+            print '++ New messages!'
+            self.board_interface.donation_reaction()
+            self.latest_hash = id
+        else:
+            print '++ No new messages'
 
 
 
